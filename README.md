@@ -2,6 +2,7 @@
 ENEL300 Project 4 Boebot arduino code
 
 So the master branch is what's going on the robot
+
 To change the master branch:
 
 1. Make a new branch
