@@ -2,7 +2,9 @@
 #define FOLLOW_BOARD 1
 #define LOOK_FOR_PATIENT 5
 #define LOAD_PATIENT 2
-#define RETURN 3
+#define FAR_SIDE 3
+#define NEAR_SIDE 6
+#define TO_MU 7
 #define TERMINATE 4
 int State;
 int PatientLoaded = 0;
@@ -50,23 +52,29 @@ Timer1++;
 break;
 case FOLLOW_BOARD:
 BoardEnd = !checkSideDistance();
-DriveParallelToBoard();
+//DriveParallelToBoard();
 Timer2++;
 
 case LOOK_FOR_PATIENT:
 FrontObstructionDetected = CheckFrontSensor();
-DriveParallelToBoard();
+//DriveParallelToBoard();
 
 case LOAD_PATIENT:
 EmitBeep();
 FlashLight();
 break;
 
-case RETURN:
-FrontObstructionDetected = CheckFrontSensor();
-NavigateToMU();
+case FAR_SIDE:
+BoardEnd = !checkSideDistance();
+//DriveParallelToBoard();
+
+case NEAR_SIDE:
+//DriveParallelToBoard();
+Timer2--;
+
 break;
-case TERMINATE:
+case TO_MU:
+Timer1--;
 break;
 } //end of do switch statement
 
@@ -89,6 +97,7 @@ StopDriving(); // Exit action
 CornerManoeuvre();
 State = LOOK_FOR_PATIENT; // State change
 Serial.write ("I'm looking for the patient. \n");
+DriveParallelToBoard(); //Entry Action
 }
 break;
 
@@ -104,30 +113,39 @@ case LOAD_PATIENT:
 
 if(CheckTimer(TimerStart) >= 10000){
 PatientLoaded = 1;
-State = RETURN; // State change
-StartDriving(); // Entry action
+State = FAR_SIDE; // State change
+DriveParallelToBoard(); // Entry action
 }
 
 break;
-case RETURN:
-if(FrontObstructionDetected){
-StopDriving(); // Exit action
-State = TERMINATE; // State change
+case FAR_SIDE:
+if(BoardEnd){
+  StopDriving(); // Exit action
+  CornerManoeuvre();
+  State = NEAR_SIDE; // State change
+  DriveParallelToBoard(); //Entry Action
 }
+
 break;
-case TERMINATE:
+case NEAR_SIDE:
+if(Timer2<=0) {
+  PivotTurn(); //Exit Action
+  State = TO_MU; // State Change 
+  StartDriving(); //Entry Action
+}
+
 break;
+case TO_MU:
+if (Timer1<=0) {
+  StopDriving(); // done!
+break;
+}
 } //end of entry/exit switch statement
 
 
 } // end of main loop
 
-void StartDriving()
-{
-  servoRight.writeMicroseconds(1690);  // Robot goes forward
-  servoLeft.writeMicroseconds(1300);   // 
-  Serial.write("I'm driving!\n");
-}
+
 int CheckFrontSensor()
 {
 int SensorResponse = !irDetect(2, 3, 42000);       // Check for object on right
@@ -136,8 +154,49 @@ int SensorResponse = !irDetect(2, 3, 42000);       // Check for object on right
 return SensorResponse;
 }
 
+void StartDriving()
+{
+  if (PatientLoaded) {
+    
+  servoRight.writeMicroseconds(1300);  // Robot goes forward
+  servoLeft.writeMicroseconds(1690);   // 
+  Serial.write("I'm driving backwards!\n"); //
+  }
+  
+  else {
+  servoRight.writeMicroseconds(1690);  // Robot goes forward
+  servoLeft.writeMicroseconds(1300);   // 
+  Serial.write("I'm driving!\n");
+  }
+}
+
 void DriveParallelToBoard()
 {
+  if(PatientLoaded) {
+  Serial.write("Driving parallel backwards \n");
+  int sideDistance; // 1 is close, 2 is good, 3 is far
+  sideDistance = checkSideDistance();
+      // Code to poll front sensor and filter out false positives
+
+  if (sideDistance == 2) { 
+  Serial.write("Good distance \n");
+  servoRight.writeMicroseconds(1300);  // Robot goes forward
+  servoLeft.writeMicroseconds(1690);   // 
+  }
+/*  else if (sideDistance == 3) {
+  Serial.write("too far! ");
+  servoRight.writeMicroseconds(1350);  // right wheel slower than usual, will turn to the right towards board
+  servoLeft.writeMicroseconds(1690);   // 
+  }
+  
+  else if (sideDistance == 1) {
+  Serial.write("too close ");
+  servoRight.writeMicroseconds(1350);  // left wheel slower than usual, will turn to the left away from board
+  servoLeft.writeMicroseconds(1640);   // 
+  }
+*/} // end of if(patientloaded)
+    
+  else {
   Serial.write("Time to drive parallel \n");
   int sideDistance; // 1 is close, 2 is good, 3 is far
   sideDistance = checkSideDistance();
@@ -160,7 +219,7 @@ void DriveParallelToBoard()
   servoLeft.writeMicroseconds(1300);   // 
   }
 */
-
+  } //end of else
 }
 
 
@@ -220,9 +279,9 @@ void StopDriving()
 void PivotTurn()
 {
   if(PatientLoaded) {
-  Serial.write("I'm turning right \n");  
-  servoLeft.writeMicroseconds(1600);  //right turn
-  servoRight.writeMicroseconds(1600);
+  Serial.write("I'm turning left since I'm going backwards \n");  
+  servoLeft.writeMicroseconds(1400);  //left turn
+  servoRight.writeMicroseconds(1400);
   delay (625);
   }
   else {
@@ -246,22 +305,48 @@ int irDetect(int irLedPin, int irReceiverPin, long frequency)
 }
 
 void CornerManoeuvre() {
+  
+  if(PatientLoaded) {
+  Serial.write("BoardEndBackwards \n");  
+  backwards(100);
+  rightTurn();
+  backwards(1000); //this will probably need to be changed      //ALIGNMENT
+  rightTurn();
+  backwards(250);
+  }
+  
+  else {
   Serial.write("Moving around board end \n");  
   forward(100);
   leftTurn();
   forward(1000); //this will probably need to be changed      //ALIGNMENT
   leftTurn();
   forward(250);
+  }
+  
 }
 
 void leftTurn () {
-    servoLeft.writeMicroseconds(1400);  //right turn
+    servoLeft.writeMicroseconds(1400);  //left turn
    servoRight.writeMicroseconds(1400);
    delay (625);
 }
 
+void rightTurn () {
+    servoLeft.writeMicroseconds(1600);  //right turn
+   servoRight.writeMicroseconds(1600);
+   delay (625);
+}
+
 void forward (int time) {
-    servoLeft.writeMicroseconds(1690);  //right turn
+    servoLeft.writeMicroseconds(1690);  // forwards, aligned for 2 meters straight
    servoRight.writeMicroseconds(1300);
    delay (time);
 }
+
+void backwards (int time) {
+    servoLeft.writeMicroseconds(1300);  // reverse, aligned for 2 meters straight
+   servoRight.writeMicroseconds(1690);
+   delay (time);
+}
+
