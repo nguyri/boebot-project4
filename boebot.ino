@@ -50,10 +50,12 @@ case FIND_BOARD:
 FrontObstructionDetected = CheckFrontSensor();
 Timer1++;
 break;
+
 case FOLLOW_BOARD:
 BoardEnd = !checkSideDistance();
 //DriveParallelToBoard();
 Timer2++;
+break;
 
 case LOOK_FOR_PATIENT:
 FrontObstructionDetected = CheckFrontSensor();
@@ -91,6 +93,7 @@ DriveParallelToBoard(); // Entry action   //ALIGNMENT
 }
 
 break;
+
 case FOLLOW_BOARD:
 if(BoardEnd){
 StopDriving(); // Exit action
@@ -150,7 +153,7 @@ int CheckFrontSensor()
 {
 int SensorResponse = !irDetect(2, 3, 42000);       // Check for object on right
 // Code to poll front sensor and filter out false positives   
-  digitalWrite(8, SensorResponse);
+  digitalWrite(7, SensorResponse);
 return SensorResponse;
 }
 
@@ -178,7 +181,7 @@ void DriveParallelToBoard()
   sideDistance = checkSideDistance();
       // Code to poll front sensor and filter out false positives
 
-  if (sideDistance == 2) { 
+  if (sideDistance) {  //editted for getting side distance to work
   Serial.write("Good distance \n");
   servoRight.writeMicroseconds(1300);  // Robot goes forward
   servoLeft.writeMicroseconds(1690);   // 
@@ -202,7 +205,7 @@ void DriveParallelToBoard()
   sideDistance = checkSideDistance();
       // Code to poll front sensor and filter out false positives
 
-  if (sideDistance == 2) { 
+  if (sideDistance == 1) { 
   Serial.write("Good distance \n");
   servoRight.writeMicroseconds(1690);  // Robot goes forward
   servoLeft.writeMicroseconds(1300);   // 
@@ -225,13 +228,18 @@ void DriveParallelToBoard()
 
 int checkSideDistance() { 
   Serial.write ("I'm checking side distance\n");
+  /*
   int frequency = 40000;
   int distance = 0;
   for (; frequency < 42000; frequency+=1000) {
       distance += irDetect(9, 10, frequency); // check left sensor       //ALIGNMENT
   }
-  digitalWrite(7, distance);    //display side sensor status on left LED
+  digitalWrite(8, distance);    //display side sensor status on left LED
   return distance;
+  */
+  int distance = !irDetect(9, 10, 44000);
+  return distance;
+  digitalWrite(7, distance);    //display side sensor status on left LED
 }      
   
 
@@ -274,7 +282,6 @@ void StopDriving()
   Serial.write("I stopped.\n");
   servoRight.writeMicroseconds(1500);  // robot stops
   servoLeft.writeMicroseconds(1500);   // 
-
 }
 void PivotTurn()
 {
@@ -317,11 +324,11 @@ void CornerManoeuvre() {
   
   else {
   Serial.write("Moving around board end \n");  
-  forward(100);
+  forward(1000);
   leftTurn();
-  forward(1000); //this will probably need to be changed      //ALIGNMENT
+  forward(2000); //this will probably need to be changed      //ALIGNMENT
   leftTurn();
-  forward(250);
+  forward(1000);
   }
   
 }
@@ -338,13 +345,13 @@ void rightTurn () {
    delay (625);
 }
 
-void forward (int time) {
+void backwards (int time) {
     servoLeft.writeMicroseconds(1690);  // forwards, aligned for 2 meters straight
    servoRight.writeMicroseconds(1300);
    delay (time);
 }
 
-void backwards (int time) {
+void forward (int time) {
     servoLeft.writeMicroseconds(1300);  // reverse, aligned for 2 meters straight
    servoRight.writeMicroseconds(1690);
    delay (time);
