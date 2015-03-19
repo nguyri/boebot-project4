@@ -52,7 +52,7 @@ Timer1++;
 break;
 
 case FOLLOW_BOARD:
-BoardEnd = !checkSideDistance();
+BoardEnd = checkSide();
 //DriveParallelToBoard();
 Timer2++;
 break;
@@ -67,7 +67,7 @@ FlashLight();
 break;
 
 case FAR_SIDE:
-BoardEnd = !checkSideDistance();
+BoardEnd = checkSide();
 //DriveParallelToBoard();
 
 case NEAR_SIDE:
@@ -86,7 +86,8 @@ break;
 switch(State){
 case FIND_BOARD:
 if(FrontObstructionDetected){
-StopDriving(); // Exit action
+stopped(500); // Exit action
+forward(500); // shuffle
 PivotTurn(); // Exit action
 State = FOLLOW_BOARD; // State change
 DriveParallelToBoard(); // Entry action   //ALIGNMENT
@@ -102,6 +103,16 @@ State = LOOK_FOR_PATIENT; // State change
 Serial.write ("I'm looking for the patient. \n");
 DriveParallelToBoard(); //Entry Action
 }
+
+/* 
+case FOLLOW_BOARD
+if(FrontObstructionDetected) {
+  StopDriving();      //found the patient, reel 'er in
+  State = LOAD_PATIENT;
+  TimerStart = millis();  //reference 0 time for the timer
+}
+break;
+*/
 break;
 
 case LOOK_FOR_PATIENT:
@@ -177,8 +188,8 @@ void DriveParallelToBoard()
 {
   if(PatientLoaded) {
   Serial.write("Driving parallel backwards \n");
-  int sideDistance; // 1 is close, 2 is good, 3 is far
-  sideDistance = checkSideDistance();
+  int sideDistance;
+  sideDistance = !checkSide();
       // Code to poll front sensor and filter out false positives
 
   if (sideDistance) {  //editted for getting side distance to work
@@ -202,10 +213,10 @@ void DriveParallelToBoard()
   else {
   Serial.write("Time to drive parallel \n");
   int sideDistance; // 1 is close, 2 is good, 3 is far
-  sideDistance = checkSideDistance();
+  sideDistance = !checkSide();
       // Code to poll front sensor and filter out false positives
 
-  if (sideDistance == 1) { 
+  if (sideDistance) { 
   Serial.write("Good distance \n");
   servoRight.writeMicroseconds(1690);  // Robot goes forward
   servoLeft.writeMicroseconds(1300);   // 
@@ -228,20 +239,26 @@ void DriveParallelToBoard()
 
 int checkSideDistance() { 
   Serial.write ("I'm checking side distance\n");
-  /*
-  int frequency = 40000;
+  
   int distance = 0;
-  for (; frequency < 42000; frequency+=1000) {
+  for ( int frequency = 42000; frequency <= 44000; frequency+=1000) {
       distance += irDetect(9, 10, frequency); // check left sensor       //ALIGNMENT
+      Serial.write ("In for loop\n");
+      Serial.write ("%i",distance);
   }
   digitalWrite(8, distance);    //display side sensor status on left LED
   return distance;
-  */
-  int distance = !irDetect(9, 10, 44000);
-  return distance;
-  digitalWrite(7, distance);    //display side sensor status on left LED
-}      
+}
+
+int checkSide() { 
+  Serial.write ("I'm checking side bool\n");
   
+  int SensorResponse = irDetect(9, 10, 44000);       // Check for object on right
+// Code to poll front sensor and filter out false positives   
+  digitalWrite(8, SensorResponse);
+  return SensorResponse;
+  
+}  
 
 
 //Project 4 Sample FSM and Skeleton Code Page 3
@@ -289,13 +306,13 @@ void PivotTurn()
   Serial.write("I'm turning left since I'm going backwards \n");  
   servoLeft.writeMicroseconds(1400);  //left turn
   servoRight.writeMicroseconds(1400);
-  delay (625);
+  delay (585);
   }
   else {
   Serial.write("I'm turning right \n");  
   servoLeft.writeMicroseconds(1600);  //right turn
   servoRight.writeMicroseconds(1600);
-  delay (625);
+  delay (585);
   }
   
 }
@@ -336,13 +353,13 @@ void CornerManoeuvre() {
 void leftTurn () {
     servoLeft.writeMicroseconds(1400);  //left turn
    servoRight.writeMicroseconds(1400);
-   delay (625);
+   delay (585);
 }
 
 void rightTurn () {
     servoLeft.writeMicroseconds(1600);  //right turn
    servoRight.writeMicroseconds(1600);
-   delay (625);
+   delay (585);
 }
 
 void backwards (int time) {
@@ -357,3 +374,8 @@ void forward (int time) {
    delay (time);
 }
 
+void stopped (int time) {
+    servoLeft.writeMicroseconds(1500);  // reverse, aligned for 2 meters straight
+   servoRight.writeMicroseconds(1500);
+   delay (time);
+}
