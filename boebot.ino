@@ -1,15 +1,16 @@
 #define FIND_BOARD 0
 #define FOLLOW_BOARD 1
-#define LOOK_FOR_PATIENT 5
-#define LOAD_PATIENT 2
-#define FAR_SIDE 3
-#define NEAR_SIDE 6
-#define TO_MU 7
-#define TERMINATE 4
+#define LOOK_FOR_PATIENT 2
+#define LOAD_PATIENT 3
+#define FAR_SIDE 4
+#define NEAR_SIDE 5
+#define TO_MU 6
+#define TERMINATE 7
 int State;
 int PatientLoaded = 0;
 int Timer1 = 0;
 int Timer2 = 0;
+int TimerStart= 0;
 
 #include <Servo.h>                           // Include servo library
  
@@ -42,7 +43,7 @@ StartDriving();
 void loop()
 {
   
-int FrontObstructionDetected, TimerStart, PatientLoaded, BoardEnd;
+int FrontObstructionDetected, PatientLoaded, BoardEnd;
 // Code to initialize the above int variables appropriately
 // Switch statement for handling the "Do" actions
 switch(State){
@@ -60,6 +61,7 @@ break;
 case LOOK_FOR_PATIENT:
 FrontObstructionDetected = CheckFrontSensor();
 //DriveParallelToBoard();
+break;
 
 case LOAD_PATIENT:
 EmitBeep();
@@ -101,7 +103,9 @@ StopDriving(); // Exit action
 CornerManoeuvre();
 State = LOOK_FOR_PATIENT; // State change
 Serial.write ("I'm looking for the patient. \n");
-DriveParallelToBoard(); //Entry Action
+StartDriving(); //Entry Action
+FrontObstructionDetected = 0;
+
 }
 
 /* 
@@ -116,22 +120,27 @@ break;
 break;
 
 case LOOK_FOR_PATIENT:
+Serial.write ("Still looking for patient\n");
 if(FrontObstructionDetected) {
-  StopDriving();      //found the patient, reel 'er in
+  Serial.write ("I found the patient.\n");
   State = LOAD_PATIENT;
+  StopDriving();      //found the patient, reel 'er in
   TimerStart = millis();  //reference 0 time for the timer
 }
+break;
 
 //Project 4 Sample FSM and Skeleton Code Page 2
 case LOAD_PATIENT:
-
+Serial.write("I'm waiting for the patient.\n");
 if(CheckTimer(TimerStart) >= 10000){
+  Serial.write("10 seconds are up.\n");
 PatientLoaded = 1;
 State = FAR_SIDE; // State change
 DriveParallelToBoard(); // Entry action
 }
 
 break;
+
 case FAR_SIDE:
 if(BoardEnd){
   StopDriving(); // Exit action
